@@ -1,31 +1,36 @@
 package main
-
+// Questions:
+// Best way to define champion list
+// how to loop through more then 1 scrape
+// how to add to the file more then one struct of structs
 import (
         "fmt"
         "strings"
         "os"
-        // "regexp"
+        "regexp"
         "encoding/json"
         "io/ioutil"
 		"github.com/gocolly/colly"
 )
 type Skin struct {
         Name string `json: "name"`
-        Cost  string
+        Cost string `json: "cost"`
+		Date string `json: "date"`
     }
 
 type SkinsStruct struct {
         Skins []Skin
     }
 
-var names []string
-var costs []string
-
-// main() contains code adapted from example found in Colly's docs:
-// http://go-colly.org/docs/examples/basic/
 func main() {
-        names = make([]string, 0)
-        costs = make([]string, 0)
+		var names []string
+		var costs []string
+		var dates []string
+
+		// champions := []string{"Aatrox", "Ahri", "Camille"}
+		// championMap := make(map[string][]string)
+		// make() creates the data in memory given the definition
+
         // Instantiate default collector
         c := colly.NewCollector()
         c.OnHTML(".skin-icon+ div div:nth-child(1)", func(e *colly.HTMLElement) {
@@ -33,7 +38,17 @@ func main() {
                 names = append(names, name)
         })
         c.OnHTML(".skin-icon+ div div+ div", func(e *colly.HTMLElement) {
-                costs = append(costs, e.Text)
+				m1 := regexp.MustCompile(`^[^/]+`)
+				m2 := regexp.MustCompile(`[^/]*$`)
+
+				res := m1.FindString(e.Text)
+				cost := strings.TrimSpace(res)
+
+				res2 := m2.FindString(e.Text)
+				date := strings.TrimSpace(res2)
+
+                costs = append(costs, cost)
+				dates = append(dates, date)
         })
        
         c.OnRequest(func(r *colly.Request) {
@@ -61,9 +76,9 @@ func main() {
         skinsStruct := SkinsStruct{skins}
 
         for i, name := range names {
-                item1 := Skin{Name: name, Cost: costs[i]}
+                item1 := Skin{Name: name, Cost: costs[i], Date: dates[i]}
                 skinsStruct.AddItem(item1)
-                fmt.Println(name, costs[i])
+                fmt.Println(name, costs[i], dates[i])
         }
 
         fmt.Printf("%+v\n", skinsStruct) // Print Struct with Variable Name
@@ -74,6 +89,7 @@ func main() {
 		os.Stdout.Write(b)
 		_ = ioutil.WriteFile("output.json", b, 0644)
 }
+
 func (skins *SkinsStruct) AddItem(skin Skin) []Skin {
         skins.Skins = append(skins.Skins, skin)
         return skins.Skins
